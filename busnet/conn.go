@@ -7,7 +7,7 @@ import (
 	"io"
 	"net"
 	"sync"
-	"tcp-bus/busface"
+	"tcpbus/busface"
 )
 
 // tcp链接

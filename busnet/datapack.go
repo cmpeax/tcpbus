@@ -3,7 +3,7 @@ package busnet
 import (
 	"bytes"
 	"encoding/binary"
-	"tcp-bus/busface"
+	"tcpbus/busface"
 )
 
 var defaultHeaderLen uint32 = 8

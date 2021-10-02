@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"tcp-bus/busface"
+	"tcpbus/busface"
 )
 
 // tcp池

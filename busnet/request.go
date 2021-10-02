@@ -1,6 +1,6 @@
 package busnet
 
-import "tcp-bus/busface"
+import "tcpbus/busface"
 
 //Request 请求
 type Request struct {

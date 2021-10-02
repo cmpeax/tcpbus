@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"tcp-bus/busface"
-	"tcp-bus/busnet"
+	"tcpbus/busface"
+	"tcpbus/busnet"
 )
 
 type MsgRequestState struct{}

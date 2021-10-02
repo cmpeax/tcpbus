@@ -3,7 +3,7 @@ package busnet
 import (
 	"fmt"
 	"strconv"
-	"tcp-bus/busface"
+	"tcpbus/busface"
 )
 
 // MsgHandle -

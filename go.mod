@@ -1,3 +1,3 @@
-module tcp-bus
+module tcpbus
 
 go 1.17

@@ -2,7 +2,7 @@ package busnet
 
 import (
 	"sync"
-	"tcp-bus/busface"
+	"tcpbus/busface"
 )
 
 // ClientHandle -
