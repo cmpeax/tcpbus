@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"tcpbus/busface"
-	"tcpbus/busnet"
+
+	"github.com/cmpeax/tcpbus/busface"
+	"github.com/cmpeax/tcpbus/busnet"
 )
 
 type MsgRequestState struct{}

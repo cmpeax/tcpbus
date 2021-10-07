@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"tcpbus/busface"
+
+	"github.com/cmpeax/tcpbus/busface"
 )
 
 // tcp池

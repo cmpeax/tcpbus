@@ -1,6 +1,6 @@
 package busnet
 
-import "tcpbus/busface"
+import "github.com/cmpeax/tcpbus/busface"
 
 //BaseRouter 实现router时，先嵌入这个基类，然后根据需要对这个基类的方法进行重写
 type BaseRouter struct{}

@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"tcpbus/busnet"
 	"time"
+
+	"github.com/cmpeax/tcpbus/busnet"
 )
 
 func main() {

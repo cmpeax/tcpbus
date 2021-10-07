@@ -2,7 +2,8 @@ package busnet
 
 import (
 	"sync"
-	"tcpbus/busface"
+
+	"github.com/cmpeax/tcpbus/busface"
 )
 
 // ClientHandle -

@@ -7,7 +7,8 @@ import (
 	"io"
 	"net"
 	"sync"
-	"tcpbus/busface"
+
+	"github.com/cmpeax/tcpbus/busface"
 )
 
 // tcp链接

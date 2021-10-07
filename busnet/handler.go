@@ -3,7 +3,8 @@ package busnet
 import (
 	"fmt"
 	"strconv"
-	"tcpbus/busface"
+
+	"github.com/cmpeax/tcpbus/busface"
 )
 
 // MsgHandle -

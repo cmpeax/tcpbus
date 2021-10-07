@@ -1,6 +1,6 @@
 package busnet
 
-import "tcpbus/busface"
+import "github.com/cmpeax/tcpbus/busface"
 
 //Request 请求
 type Request struct {

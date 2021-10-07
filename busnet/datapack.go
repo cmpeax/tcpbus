@@ -3,7 +3,8 @@ package busnet
 import (
 	"bytes"
 	"encoding/binary"
-	"tcpbus/busface"
+
+	"github.com/cmpeax/tcpbus/busface"
 )
 
 var defaultHeaderLen uint32 = 8
