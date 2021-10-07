@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/cmpeax/tcpbus/busface"
@@ -33,6 +34,19 @@ func (this *tcpPool) Broadcast(data busface.IMessage) {
 	this.conns.Range(func(key interface{}, value interface{}) bool {
 		matchConn := value.(*TcpConn)
 		matchConn.Write(data)
+		return true
+	})
+}
+
+func (this *tcpPool) Send(ip string, data busface.IMessage) {
+	this.conns.Range(func(key interface{}, value interface{}) bool {
+		matchConn := value.(*TcpConn)
+		connAddr := strings.Split(matchConn.addr, ":")
+		if len(connAddr) == 2 {
+			if connAddr[0] == ip {
+				matchConn.Write(data)
+			}
+		}
 		return true
 	})
 }
