@@ -1,5 +1,14 @@
 package busface
 
+const LOG_LEVEL_ERROR = 1
+const LOG_LEVEL_WARN = 2
+const LOG_LEVEL_INFO = 3
+const LOG_LEVEL_DEBUG = 4
+
+type ILog interface {
+	Write(uint32, string)
+}
+
 type IConn interface {
 	Write(IMessage) error
 	GetConnID() uint32

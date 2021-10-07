@@ -14,15 +14,25 @@
 * 未写单元测试
 * Request的 router 方式 应该用 Eventbus 而不是 map (后续改进)
 * 实际上解包方法可以定制实现,为了方便自己项目使用,故NewServer没有开放函数.后续可以通过追加SetPack(busface.IPack)的方法去传入.
-* 服务端和客户端均未做底层的心跳包以及断线重连的机制.
+* 服务端和客户端均未做底层的心跳包的机制. (可能需要引入 BeforeHandle 机制)
 ---
 
+#### 已解决问题
+* 客户端完成断线重连的机制.
 服务端例子
 ```go
 
 package main
 
+// 定义 日志输出
+type LogObject struct{}
+
+func (this *LogObject) Write(code uint32, msg string) {
+	fmt.Println(msg)
+}
+
 // 定义 消息ID 
+
 const MESSAGE_REQUEST_STATE_MESSAGE uint32 = 1
 const MESSAGE_RESPONSE_STATE_MESSAGE uint32 = 2
 
@@ -42,7 +52,7 @@ func (this *MsgRequestState) Handle(request busface.IRequest) {
 
 func main() {
     // 绑定端口号
-    server := busnet.NewServer(10329) 
+    server := busnet.NewServer(10329, &LogObject{}) 
     // 设置路由
     server.AddRouter(MESSAGE_REQUEST_STATE_MESSAGE, 
         &MsgRequestState{})
@@ -63,6 +73,14 @@ func main() {
 ```go
 package main
 
+
+// 定义 日志输出
+type LogObject struct{}
+
+func (this *LogObject) Write(code uint32, msg string) {
+	fmt.Println(msg)
+}
+
 // 定义 消息ID 
 const MESSAGE_REQUEST_STATE_MESSAGE uint32 = 1
 const MESSAGE_RESPONSE_STATE_MESSAGE uint32 = 2
@@ -77,16 +95,13 @@ func (this *MsgBroadCast) Handle(request busface.IRequest) {
 
 
 func main() {
-    client := busnet.NewClient("127.0.0.1:10329")
-    err := client.Connect()
-    if err != nil {
-        fmt.Println(err.Error())
-        return
-    }
-    
-    // 设置路由
+    client := busnet.NewClient("127.0.0.1:10329", &LogObject{})
     client.AddRouter(MESSAGE_BROADCAST_DOEVENT, 
         &MsgBroadCast{})
+
+    // 运行
+	client.Start()
+   
     fmt.Println("客户端和服务端已经建立连接!")
     // 间歇性向服务器请求
     for {

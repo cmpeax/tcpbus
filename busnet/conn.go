@@ -14,6 +14,7 @@ import (
 // tcp链接
 type TcpConn struct {
 	sync.RWMutex
+	log        busface.ILog
 	conn       *net.TCPConn
 	connID     uint32
 	addr       string
@@ -23,9 +24,10 @@ type TcpConn struct {
 	writerChan chan []byte
 }
 
-func NewTcpConn(ctx context.Context, server busface.IServer, connID uint32, conn *net.TCPConn, addr string) *TcpConn {
+func NewTcpConn(ctx context.Context, log busface.ILog, server busface.IServer, connID uint32, conn *net.TCPConn, addr string) *TcpConn {
 	connCtx, cancel := context.WithCancel(ctx)
 	return &TcpConn{
+		log:        log,
 		conn:       conn,
 		addr:       addr,
 		connID:     connID,
@@ -50,6 +52,9 @@ func (this *TcpConn) GetConnID() uint32 {
 }
 
 func (this *TcpConn) StartReader() {
+	defer func() {
+		this.log.Write(busface.LOG_LEVEL_DEBUG, fmt.Sprintf("[服务端][%s] 读协程 已被释放.", this.addr))
+	}()
 	for {
 		select {
 		case <-this.ctx.Done():
@@ -58,7 +63,7 @@ func (this *TcpConn) StartReader() {
 			//读取包头
 			headData := make([]byte, this.server.GetPackFunc().GetHeadLen())
 			if _, err := io.ReadFull(this.conn, headData); err != nil {
-				fmt.Println("read msg head error ", err)
+				this.log.Write(busface.LOG_LEVEL_ERROR, fmt.Sprintf("[服务端][%s] 错误: 读取头部失败. [%s]", this.addr, err.Error()))
 				this.Close()
 				return
 			}
@@ -66,7 +71,7 @@ func (this *TcpConn) StartReader() {
 			//拆包，得到msgID 和 datalen 放在msg中
 			msg, err := this.server.GetPackFunc().Unpack(headData)
 			if err != nil {
-				fmt.Println("unpack error ", err)
+				this.log.Write(busface.LOG_LEVEL_ERROR, fmt.Sprintf("[服务端][%s] 错误: 解包失败. [%s]", this.addr, err.Error()))
 				this.Close()
 				return
 			}
@@ -76,7 +81,7 @@ func (this *TcpConn) StartReader() {
 			if msg.GetDataLen() > 0 {
 				data = make([]byte, msg.GetDataLen())
 				if _, err := io.ReadFull(this.conn, data); err != nil {
-					fmt.Println("read msg data error ", err)
+					this.log.Write(busface.LOG_LEVEL_ERROR, fmt.Sprintf("[服务端][%s] 错误: 读数据没有达到指定的长度. [%s]", this.addr, err.Error()))
 					this.Close()
 					return
 				}
@@ -96,12 +101,16 @@ func (this *TcpConn) StartReader() {
 }
 
 func (this *TcpConn) StartWriter() {
+	defer func() {
+		this.log.Write(busface.LOG_LEVEL_DEBUG, fmt.Sprintf("[服务端][%s] 写协程 已被释放.", this.addr))
+	}()
+
 	for {
 		select {
 		case data := <-this.writerChan:
 			_, err := this.conn.Write(data)
 			if err != nil {
-				fmt.Println(err.Error())
+				this.log.Write(busface.LOG_LEVEL_ERROR, fmt.Sprintf("[服务端][%s] 发送协程错误: [%s]", this.addr, err.Error()))
 				this.Close()
 				return
 			}

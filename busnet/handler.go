@@ -1,9 +1,6 @@
 package busnet
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/cmpeax/tcpbus/busface"
 )
 
@@ -40,7 +37,7 @@ func (mh *MsgHandle) SendMsgToTaskQueue(request busface.IRequest) {
 func (mh *MsgHandle) DoMsgHandler(request busface.IRequest) {
 	handler, ok := mh.Apis[request.GetMsgID()]
 	if !ok {
-		fmt.Println("api msgID = ", request.GetMsgID(), " is not FOUND!")
+		// 错误.
 		return
 	}
 
@@ -50,19 +47,19 @@ func (mh *MsgHandle) DoMsgHandler(request busface.IRequest) {
 
 //AddRouter 为消息添加具体的处理逻辑
 func (mh *MsgHandle) AddRouter(msgID uint32, router busface.IRouter) {
-	//1 判断当前msg绑定的API处理方法是否已经存在
-	if _, ok := mh.Apis[msgID]; ok {
-		panic("repeated api , msgID = " + strconv.Itoa(int(msgID)))
-	}
+
+	// //1 判断当前msg绑定的API处理方法是否已经存在
+	// if _, ok := mh.Apis[msgID]; !ok {
+	// 	panic("repeated api , msgID = " + strconv.Itoa(int(msgID)))
+	// }
 	//2 添加msg与api的绑定关系
+
+	// 直接覆盖处理。
 	mh.Apis[msgID] = router
-	fmt.Println("Add api msgID = ", msgID)
 }
 
 //StartOneWorker 启动一个Worker工作流程
 func (mh *MsgHandle) StartOneWorker(workerID int, taskQueue chan busface.IRequest) {
-	fmt.Println("Worker ID = ", workerID, " is started.")
-	//不断的等待队列中的消息
 	for {
 		select {
 		//有消息则取出队列的Request，并执行绑定的业务方法

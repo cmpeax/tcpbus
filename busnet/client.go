@@ -7,12 +7,14 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/cmpeax/tcpbus/busface"
 )
 
 // 客户端
 type TcpBusClient struct {
+	log        busface.ILog
 	ctx        context.Context
 	cancel     context.CancelFunc
 	conn       net.Conn
@@ -22,12 +24,11 @@ type TcpBusClient struct {
 	writerChan chan []byte
 }
 
-func NewClient(addr string) *TcpBusClient {
-	newCtx, cancel := context.WithCancel(context.Background())
+func NewClient(addr string, log busface.ILog) *TcpBusClient {
+
 	return &TcpBusClient{
-		ctx:        newCtx,
-		cancel:     cancel,
 		addr:       addr,
+		log:        log,
 		pack:       NewDataPack(),
 		handler:    NewClientHandle(),
 		writerChan: make(chan []byte, 50),
@@ -46,7 +47,32 @@ func (this *TcpBusClient) Close() {
 	this.cancel()
 }
 
-func (this *TcpBusClient) Connect() error {
+func (this *TcpBusClient) Start() {
+	go func() {
+		for {
+			err := this.connect()
+			if err != nil {
+				this.log.Write(busface.LOG_LEVEL_INFO, fmt.Sprintf("[客户端] 连接服务端失败. 5秒后重试. [%s]", err.Error()))
+				<-time.After(5 * time.Second)
+				continue
+			}
+			this.log.Write(busface.LOG_LEVEL_INFO, fmt.Sprintf("[客户端] 连接服务端成功!"))
+
+			// 阻塞 直到退出. 进行重试策略.
+			<-this.ctx.Done()
+
+			this.log.Write(busface.LOG_LEVEL_INFO, fmt.Sprintf("[客户端] 检测到连接中断,正在进行重连."))
+			this.conn.Close()
+			// 等待2秒左右,直到其他任务都完成. (优化策略: 可以用waitGroup处理.)
+			<-time.After(2 * time.Second)
+		}
+	}()
+}
+
+func (this *TcpBusClient) connect() error {
+	newCtx, cancel := context.WithCancel(context.Background())
+	this.ctx = newCtx
+	this.cancel = cancel
 	conn, err := net.Dial("tcp", this.addr)
 	if err != nil {
 		return err
@@ -58,7 +84,31 @@ func (this *TcpBusClient) Connect() error {
 	return nil
 }
 
+// 底层的写入
+func (this *TcpBusClient) startWriter() {
+	defer func() {
+		this.log.Write(busface.LOG_LEVEL_DEBUG, fmt.Sprintf("[客户端][%s] 发送 协程已退出.", this.addr))
+	}()
+	for {
+		select {
+		case data := <-this.writerChan:
+			_, err := this.conn.Write(data)
+			if err != nil {
+				// 写入失败. 退出处理.
+				this.log.Write(busface.LOG_LEVEL_ERROR, fmt.Sprintf("[客户端][%s] 写入错误. [%s]", this.addr, err.Error()))
+				this.cancel()
+				return
+			}
+		case <-this.ctx.Done():
+			return
+		}
+	}
+}
+
 func (this *TcpBusClient) startReader() {
+	defer func() {
+		this.log.Write(busface.LOG_LEVEL_DEBUG, fmt.Sprintf("[客户端][%s] 接收 协程已退出.", this.addr))
+	}()
 	for {
 		select {
 		case <-this.ctx.Done():
@@ -67,14 +117,17 @@ func (this *TcpBusClient) startReader() {
 			//读取包头
 			headData := make([]byte, this.GetPackFunc().GetHeadLen())
 			if _, err := io.ReadFull(this.conn, headData); err != nil {
-				fmt.Println("read msg head error ", err)
+				// 读取失败. 触发退出策略
+				this.log.Write(busface.LOG_LEVEL_ERROR, fmt.Sprintf("[客户端][%s] 错误: 读取头部失败. [%s]", this.addr, err.Error()))
+				this.cancel()
 				return
 			}
 
 			//拆包，得到msgID 和 datalen 放在msg中
 			msg, err := this.GetPackFunc().Unpack(headData)
 			if err != nil {
-				fmt.Println("unpack error ", err)
+				this.log.Write(busface.LOG_LEVEL_ERROR, fmt.Sprintf("[客户端][%s] 错误: 解包失败. [%s]", this.addr, err.Error()))
+				this.cancel()
 				return
 			}
 
@@ -83,7 +136,9 @@ func (this *TcpBusClient) startReader() {
 			if msg.GetDataLen() > 0 {
 				data = make([]byte, msg.GetDataLen())
 				if _, err := io.ReadFull(this.conn, data); err != nil {
-					fmt.Println("read msg data error ", err)
+					this.log.Write(busface.LOG_LEVEL_ERROR, fmt.Sprintf("[客户端][%s] 错误: 读数据没有达到指定的长度. [%s]", this.addr, err.Error()))
+
+					this.cancel()
 					return
 				}
 			}
@@ -146,23 +201,6 @@ func (this *TcpBusClient) Request(ctx context.Context, req busface.IMessage, hop
 	}
 
 	// 等待接收
-}
-
-// 底层的写入
-func (this *TcpBusClient) startWriter() {
-	for {
-		select {
-		case data := <-this.writerChan:
-			_, err := this.conn.Write(data)
-			if err != nil {
-				fmt.Println(err.Error())
-				return
-			}
-		case <-this.ctx.Done():
-			return
-		}
-	}
-
 }
 
 func (this *TcpBusClient) GetHandler() busface.IClientHandler {
