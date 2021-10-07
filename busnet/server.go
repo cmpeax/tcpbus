@@ -80,6 +80,10 @@ func (this *TcpBusServer) Broadcast(data busface.IMessage) {
 	this.connPool.Broadcast(data)
 }
 
+func (this *TcpBusServer) Send(ip string, data busface.IMessage) {
+	this.connPool.Send(ip, data)
+}
+
 func (this *TcpBusServer) Start() {
 	if this.pack == nil {
 		panic("未设置 packFunc")
