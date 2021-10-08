@@ -57,29 +57,35 @@ func (this *tcpPool) Send(ip string, data busface.IMessage) {
 
 // 服务端
 type TcpBusServer struct {
-	IP       string
-	log      busface.ILog
-	Port     int
-	MaxConn  int
-	handler  busface.IHandler
-	pack     busface.IPack
-	connPool *tcpPool
+	IP          string
+	log         busface.ILog
+	Port        int
+	MaxConn     int
+	afterAccept func() busface.IMessage
+	handler     busface.IHandler
+	pack        busface.IPack
+	connPool    *tcpPool
 }
 
 func NewServer(port int, log busface.ILog) *TcpBusServer {
 	return &TcpBusServer{
-		log:      log,
-		IP:       "0.0.0.0",
-		Port:     port,
-		MaxConn:  50,
-		pack:     NewDataPack(),
-		connPool: NewTcpPool(log),
-		handler:  NewMsgHandle(),
+		log:         log,
+		IP:          "0.0.0.0",
+		Port:        port,
+		MaxConn:     50,
+		afterAccept: nil,
+		pack:        NewDataPack(),
+		connPool:    NewTcpPool(log),
+		handler:     NewMsgHandle(),
 	}
 }
 
 func (this *TcpBusServer) AddRouter(msgID uint32, router busface.IRouter) {
 	this.handler.AddRouter(msgID, router)
+}
+
+func (this *TcpBusServer) AfterAccept(afterAccept func() busface.IMessage) {
+	this.afterAccept = afterAccept
 }
 
 func (this *TcpBusServer) Broadcast(data busface.IMessage) {
@@ -141,7 +147,7 @@ func (this *TcpBusServer) Start() {
 
 			cID++
 			//3.3 处理该新连接请求的 业务 方法， 此时应该有 handler 和 conn是绑定的
-			dealConn := NewTcpConn(context.Background(), this.log, this, cID, conn, conn.RemoteAddr().String())
+			dealConn := NewTcpConn(context.Background(), this.log, this, this.afterAccept, cID, conn, conn.RemoteAddr().String())
 
 			//3.4 启动当前链接的处理业务
 			go dealConn.Start()

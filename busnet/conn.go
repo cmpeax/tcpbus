@@ -14,33 +14,45 @@ import (
 // tcp链接
 type TcpConn struct {
 	sync.RWMutex
-	log        busface.ILog
-	conn       *net.TCPConn
-	connID     uint32
-	addr       string
-	ctx        context.Context
-	cancel     context.CancelFunc
-	server     busface.IServer
-	writerChan chan []byte
+	log         busface.ILog
+	conn        *net.TCPConn
+	connID      uint32
+	addr        string
+	ctx         context.Context
+	cancel      context.CancelFunc
+	server      busface.IServer
+	afterAccept func() busface.IMessage
+	writerChan  chan []byte
 }
 
-func NewTcpConn(ctx context.Context, log busface.ILog, server busface.IServer, connID uint32, conn *net.TCPConn, addr string) *TcpConn {
+func NewTcpConn(ctx context.Context, log busface.ILog, server busface.IServer, afterAccept func() busface.IMessage, connID uint32, conn *net.TCPConn, addr string) *TcpConn {
 	connCtx, cancel := context.WithCancel(ctx)
 	return &TcpConn{
-		log:        log,
-		conn:       conn,
-		addr:       addr,
-		connID:     connID,
-		ctx:        connCtx,
-		cancel:     cancel,
-		server:     server,
-		writerChan: make(chan []byte, 50),
+		log:         log,
+		conn:        conn,
+		addr:        addr,
+		connID:      connID,
+		ctx:         connCtx,
+		afterAccept: afterAccept,
+		cancel:      cancel,
+		server:      server,
+		writerChan:  make(chan []byte, 50),
 	}
 }
 
 func (this *TcpConn) Start() {
+
 	go this.StartReader()
 	go this.StartWriter()
+	// 发送接收处理事件.
+	go func() {
+		if this.afterAccept() != nil {
+			err := this.Write(this.afterAccept())
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+		}
+	}()
 }
 
 func (this *TcpConn) GetContext() context.Context {
