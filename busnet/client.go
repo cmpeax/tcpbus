@@ -156,6 +156,10 @@ func (this *TcpBusClient) startReader() {
 	}
 }
 
+func (this *TcpBusClient) GetIPAddr() string {
+	return this.addr
+}
+
 func (this *TcpBusClient) Write(data busface.IMessage) error {
 	//将data封包，并且发送
 	dp := this.GetPackFunc()

@@ -12,6 +12,7 @@ type ILog interface {
 type IConn interface {
 	Write(IMessage) error
 	GetConnID() uint32
+	GetIPAddr() string
 }
 
 type IRequest interface {

@@ -46,7 +46,7 @@ func (this *TcpConn) Start() {
 	go this.StartWriter()
 	// 发送接收处理事件.
 	go func() {
-		if this.afterAccept() != nil {
+		if this.afterAccept != nil {
 			err := this.Write(this.afterAccept())
 			if err != nil {
 				fmt.Println(err.Error())
@@ -61,6 +61,10 @@ func (this *TcpConn) GetContext() context.Context {
 
 func (this *TcpConn) GetConnID() uint32 {
 	return this.connID
+}
+
+func (this *TcpConn) GetIPAddr() string {
+	return this.addr
 }
 
 func (this *TcpConn) StartReader() {
