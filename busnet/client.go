@@ -12,12 +12,16 @@ import (
 	"github.com/cmpeax/tcpbus/busface"
 )
 
+const CONST_STATE_CONNECT_CLOSE int = 0
+const CONST_STATE_CONNECTING int = 1
+
 // 客户端
 type TcpBusClient struct {
 	log        busface.ILog
 	ctx        context.Context
 	cancel     context.CancelFunc
 	conn       net.Conn
+	state      int
 	addr       string
 	handler    busface.IClientHandler
 	pack       busface.IPack
@@ -56,6 +60,8 @@ func (this *TcpBusClient) Start() {
 				<-time.After(5 * time.Second)
 				continue
 			}
+			// 连接成功
+			this.state = CONST_STATE_CONNECTING
 			this.log.Write(busface.LOG_LEVEL_INFO, fmt.Sprintf("[客户端] 连接服务端成功!"))
 
 			// 阻塞 直到退出. 进行重试策略.
@@ -63,6 +69,7 @@ func (this *TcpBusClient) Start() {
 
 			this.log.Write(busface.LOG_LEVEL_INFO, fmt.Sprintf("[客户端] 检测到连接中断,正在进行重连."))
 			this.conn.Close()
+			this.state = CONST_STATE_CONNECT_CLOSE
 			// 等待2秒左右,直到其他任务都完成. (优化策略: 可以用waitGroup处理.)
 			<-time.After(2 * time.Second)
 		}
@@ -156,20 +163,32 @@ func (this *TcpBusClient) startReader() {
 	}
 }
 
+func (this *TcpBusClient) GetState() int {
+	return this.state
+}
+
 func (this *TcpBusClient) GetIPAddr() string {
 	return this.addr
 }
 
 func (this *TcpBusClient) Write(data busface.IMessage) error {
 	//将data封包，并且发送
-	dp := this.GetPackFunc()
-	msg, err := dp.Pack(data)
-	if err != nil {
-		return errors.New("Pack error msg ")
+
+	if this.state == CONST_STATE_CONNECT_CLOSE {
+		return errors.New("连接已断开.")
 	}
 
-	//写回客户端
-	this.writerChan <- msg
+	if this.state == CONST_STATE_CONNECTING {
+		dp := this.GetPackFunc()
+		msg, err := dp.Pack(data)
+		if err != nil {
+			return errors.New("Pack error msg ")
+		}
+
+		//写回客户端
+		this.writerChan <- msg
+	}
+
 	return nil
 }
 
@@ -190,6 +209,7 @@ func (this *ITempMessage) Handle(request busface.IRequest) {
 
 // 请求
 func (this *TcpBusClient) Request(ctx context.Context, req busface.IMessage, hopeRecvMessage uint32) (busface.IMessage, error) {
+
 	if err := this.Write(req); err != nil {
 		return req, err
 	}
